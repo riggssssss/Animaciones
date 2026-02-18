@@ -6,7 +6,7 @@ plugins {
 
 android {
     namespace = "com.example.animaciones"
-    compileSdk = 35
+    compileSdk = 36
     buildToolsVersion = "35.0.0"
 
     defaultConfig {
