@@ -7,13 +7,8 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 
-/**
- * Representa una pantalla en la navegación.
- * Usamos una 'data class' simple para que sea más fácil de entender.
- */
 data class ScreenModel(val route: String, val title: String)
 
-// Definimos las pantallas como variables globales simples
 val ScreenHome = ScreenModel("home", "Home")
 val ScreenPage1 = ScreenModel("page1", "Page 1")
 val ScreenPage2 = ScreenModel("page2", "Page 2")

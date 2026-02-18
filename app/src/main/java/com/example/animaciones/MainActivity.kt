@@ -22,7 +22,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -35,16 +34,11 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalConfiguration
-import androidx.compose.ui.tooling.preview.Preview
-import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavDestination.Companion.hierarchy
 import androidx.navigation.NavGraph.Companion.findStartDestination
@@ -69,21 +63,24 @@ class MainActivity : ComponentActivity() {
 @Composable
 fun MainScreen() {
     val navController = rememberNavController()
-    // Usamos la lista global definida en Screens.kt
-    val screens = appScreens
+    val screens = appScreens //lista de pantallas
 
     Scaffold(
         bottomBar = {
+            // escucha los cambios de estado
             val navBackStackEntry by navController.currentBackStackEntryAsState()
+            // Extrae el destino exacto
             val currentDestination = navBackStackEntry?.destination
             
-            // Determinamos la pantalla seleccionada actualmente para la animación
+            // Busca en que pantalla estoy. Si no encuentra ninguna, va a Home por defecto
             val currentScreen = screens.find { it.route == currentDestination?.route } ?: ScreenHome
 
+            // Bottom navbar
             AnimatedBottomBar(
                 screens = screens,
                 currentScreen = currentScreen,
                 onTabSelected = { screen ->
+                    // Lógica de navegación estándar de Google
                     navController.navigate(screen.route) {
                         popUpTo(navController.graph.findStartDestination().id) {
                             saveState = true
@@ -95,6 +92,7 @@ fun MainScreen() {
             )
         }
     ) { innerPadding ->
+        // gestiona que pantalla se muestra arriba en función de la ruta
         NavHost(
             navController = navController,
             startDestination = ScreenHome.route,
@@ -108,63 +106,66 @@ fun MainScreen() {
 }
 
 
+
 @Composable
 fun AnimatedBottomBar(
     screens: List<ScreenModel>,
     currentScreen: ScreenModel,
     onTabSelected: (ScreenModel) -> Unit
 ) {
-    // Calculamos el ancho de cada pestaña dividiendo el ancho total de la pantalla por el número de items
+    // medir ancho total para calcular cada tab
     val configuration = LocalConfiguration.current
     val screenWidth = configuration.screenWidthDp.dp
     val tabWidth = screenWidth / screens.size
 
-    // Colores para la animación
     val PaleDogwood = Color(0xFFFFD7D7)
     val Green = Color(0xFFBDFCC9)
-    val BlueLight = Color(0xFFD7E8FF) // Un tercer color para darle variedad
+    val BlueLight = Color(0xFFD7E8FF)
 
-    // TRANSICIÓN PRINCIPAL
-    // Usamos updateTransition para sincronizar todas las animaciones cuando cambia el estado 'currentScreen'
+
+    // 'updateTransition' coordina todas las animaciones a la vez
+    // Observa 'currentScreen' y cuando cambia, avisa a todos los 'animate*' para que se muevan.
     val transition = updateTransition(currentScreen, label = "Tab indicator")
 
-    // Animación del borde IZQUIERDO del indicador
+    // El borde IZQUIERDO del indicador
     val indicatorLeft by transition.animateDp(
         transitionSpec = {
-            if (targetState.route > initialState.route) { // Nota: Comparación simple de strings para dirección
-                 // Si vamos a la derecha -> Borde izquierdo se mueve LENTO (efecto estirar)
+            // Aquí está la gracia del efecto elástico:
+            if (targetState.route > initialState.route) { 
+                // Si voy hacia la DERECHA -> El borde izquierdo se mueve LENTO (parece que se estira)
                 spring(stiffness = Spring.StiffnessVeryLow)
             } else {
-                // Si vamos a la izquierda -> Borde izquierdo se mueve RÁPIDO (efecto contraer)
+                // Si voy hacia la IZQUIERDA -> El borde izquierdo corre (parece que se encoge)
                 spring(stiffness = Spring.StiffnessMedium)
             }
         },
         label = "Indicator left"
     ) { screen ->
-        // Calculamos la posición del borde izquierdo según el índice de la pantalla
+
         val index = screens.indexOf(screen)
         tabWidth * index
     }
 
-    // Animación del borde DERECHO del indicador
+    // El borde DERECHO del indicador
     val indicatorRight by transition.animateDp(
         transitionSpec = {
             if (targetState.route > initialState.route) {
-                // Si vamos a la derecha -> Borde derecho se mueve RÁPIDO (efecto estirar)
+                // El borde derecho corre
                 spring(stiffness = Spring.StiffnessMedium)
             } else {
-                // Si vamos a la izquierda -> Borde derecho se mueve LENTO (efecto contraer)
+                // El borde derecho va lento para recuperar forma
                 spring(stiffness = Spring.StiffnessVeryLow)
             }
         },
         label = "Indicator right"
     ) { screen ->
-        // Posición del borde derecho
+
         val index = screens.indexOf(screen)
         tabWidth * (index + 1)
     }
 
-    // Animación de COLOR del indicador
+
+    // Cambia suavemente entre colores
     val indicatorColor by transition.animateColor(
         label = "Indicator color"
     ) { screen ->
@@ -176,25 +177,24 @@ fun AnimatedBottomBar(
         }
     }
 
-    // Contenedor de la barra
+    // --- DIBUJADO DE LA BARRA ---
     Box(
         modifier = Modifier
             .fillMaxWidth()
-            .height(80.dp) // Altura estándar aproximada
+            .height(80.dp) // Altura estándar para que quepa todo bien
             .background(Color.White)
     ) {
-        // 1. DIBUJAMOS EL INDICADOR ANIMADO (Detrás de los iconos)
-        // Usamos las propiedades animadas 'indicatorLeft' y 'indicatorRight' para definir su posición y tamaño
+        // El selector del fondo
         Box(
             modifier = Modifier
                 .fillMaxHeight()
-                .offset(x = indicatorLeft)
-                .width(indicatorRight - indicatorLeft) // El ancho cambia dinámicamente creando el efecto elástico
-                .padding(vertical = 12.dp, horizontal = 4.dp) // Un poco de margen
-                .background(indicatorColor, RoundedCornerShape(16.dp))
+                .offset(x = indicatorLeft) // Lo muevo a su sitio
+                .width(indicatorRight - indicatorLeft) // Su ancho varía creando el efecto chicle
+                .padding(vertical = 12.dp, horizontal = 4.dp) // Un poquito de aire
+                .background(indicatorColor, RoundedCornerShape(16.dp)) // Redondito queda mejor
         )
 
-        // 2. DIBUJAMOS LOS ITEMS DE NAVEGACIÓN (Sobre el indicador)
+        // Iconos y textos
         Row(
             modifier = Modifier.fillMaxSize(),
             horizontalArrangement = Arrangement.SpaceEvenly,
@@ -203,19 +203,18 @@ fun AnimatedBottomBar(
             screens.forEach { screen ->
                 val selected = screen == currentScreen
                 
-                // Item individual
+                // Cada item de la barra
                 Column(
                     modifier = Modifier
-                        .weight(1f) // Cada item ocupa el mismo espacio
+                        .weight(1f)
                         .fillMaxHeight()
                         .clickable(
                             interactionSource = remember { MutableInteractionSource() },
-                            indication = null // Sin efecto ripple por defecto para que luzca limpio
+                            indication = null // Le quito el efecto ripple por defecto porque ensucia la animación
                         ) { onTabSelected(screen) },
                     horizontalAlignment = Alignment.CenterHorizontally,
                     verticalArrangement = Arrangement.Center
                 ) {
-                    // Icono
                     val icon = when (screen) {
                         ScreenHome -> Icons.Filled.Home
                         ScreenPage1 -> Icons.Filled.Star
@@ -226,10 +225,10 @@ fun AnimatedBottomBar(
                     Icon(
                         imageVector = icon,
                         contentDescription = screen.title,
-                        tint = if (selected) Color.Black else Color.Gray // Cambio de color al seleccionar
+                        tint = if (selected) Color.Black else Color.Gray // Si está seleccionado, negro. Si no, gris.
                     )
                     
-                    // Animación de visibilidad del texto: Aparece progresivamente
+                    // Animacion del texto para que aparezca suavemente
                     androidx.compose.animation.AnimatedVisibility(
                         visible = selected,
                         enter = androidx.compose.animation.fadeIn() + androidx.compose.animation.expandHorizontally(),
@@ -239,7 +238,7 @@ fun AnimatedBottomBar(
                             text = screen.title,
                             style = MaterialTheme.typography.labelSmall,
                             color = Color.Black,
-                            modifier = Modifier.padding(start = 4.dp) // Un poco de espacio entre icono y texto
+                            modifier = Modifier.padding(start = 4.dp) // Separo un pelín del icono
                         )
                     }
                 }
